@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:java="http://www.mulesoft.org/schema/mule/java" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd">
+
+	<flow name="muledatadog-exp-api-main">
+        <http:listener config-ref="muledatadog-exp-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+		<apikit:router config-ref="muledatadog-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="muledatadog-exp-api-console">
+        <http:listener config-ref="muledatadog-exp-api-httpListenerConfig" path="/">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="muledatadog-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+	<flow name="get:\shop\getProducts:muledatadog-exp-api-config">
+		<ee:transform doc:name="Transform Message" doc:id="5ad845ff-75a7-4c99-b55d-cab23d8f0d04">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="Traces"><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="traceIdentifiers"><![CDATA[%dw 2.0
+output application/json
+import * from dw::util::Timer
+---
+{
+	"traceId": (random() * 1000000000) as Number as String {format:"0"},
+	"parentSpanId": (random() * 1000000000) as Number as String {format:"0"},
+	"timer":currentMilliseconds()
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request method="GET" doc:name="Request" doc:id="7a84b50f-6ae7-4a42-9413-335688508914" config-ref="HTTP_Request_configuration" path="/getProducts">
+			<http:query-params ><![CDATA[#[output application/json
+---
+{
+	"traceId" : vars.traceIdentifiers.traceId,
+	"parentId":  vars.traceIdentifiers.parentSpanId,
+	"timer":  vars.traceIdentifiers.timer
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message1" doc:id="422011f5-3d73-4f7a-9b7d-1056fa1abc2c">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="Traces" ><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Periods
+import * from dw::util::Timer
+var inputString = flow.name splitBy ":"
+var strin= inputString[1]
+---
+payload.span ++ [
+    {
+      "duration": ((currentMilliseconds() - vars.traceIdentifiers.timer) as Number {unit: "milliseconds"})*1000000,
+      "name": "exp.getProducts",
+      "resource": "/getProducts",
+      "service": strin[1 to (sizeOf(strin)-1)],
+      "span_id": vars.traceIdentifiers.parentSpanId,
+      "start": 0,
+      "trace_id": vars.traceIdentifiers.traceId,
+      "type": "web"
+    }
+ ]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="61a01ff3-a3d1-4e59-b697-7f0f18016e6c" message="get:\shop\getProducts:muledatadog-prc-api-config" />
+		<logger level="INFO" doc:name="Logger" doc:id="19a0b294-7cec-4c09-9313-1315f03b76da" message="#[vars.Traces]"/>
+    </flow>
+    <flow name="get:\shop\getProducts\(Id):muledatadog-exp-api-config">
+		<ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="Id">attributes.uriParams.'Id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<http:request method="GET" doc:name="Request" doc:id="f181fa28-58dd-4670-9305-241b69de343c" config-ref="HTTP_Request_configuration" path="/getProducts/{Id}" >
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"Id" : vars.Id
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message1" doc:id="53fcd832-db41-418f-89b7-d496ff2f5db3">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="metadata"><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Periods
+---
+{
+	"flow": "get:\shop\getProducts\(id):muledatadog-prc-api-config",
+	"timeSpent":seconds(now() - vars.timer as Number)
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="9b27cd6c-4c45-424a-90f9-b32af0c8c9fd" message="get:\shop\getProducts\(id):muledatadog-prc-api-config" />
+		<logger level="INFO" doc:name="Logger1" doc:id="4eb6dcec-570d-4946-8113-5945f916cb5d" message="#[vars.metadata]" />
+    </flow>
+    <flow name="post:\shop\postOrders:application\json:muledatadog-exp-api-config">
+		<http:request method="POST" doc:name="Request" doc:id="8184b36f-e063-4759-9612-21bed1caeaf8" config-ref="HTTP_Request_configuration" path="/postOrders" />
+		<ee:transform doc:name="Transform Message" doc:id="35eeafa9-c795-49fd-8903-1eb7d8e2d7f2" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="metadata" ><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Periods
+---
+{
+	"flow": "post:\shop\postOrders:application\json:muledatadog-exp-api-config",
+	"timeSpent":seconds(now() - vars.timer as Number)
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO"/>
+		<logger level="INFO" doc:name="Logger1" doc:id="30dc81e2-d532-4d28-8f39-02edefc2fa65" message="#[vars.metadata]" />
+    </flow>
+</mule>

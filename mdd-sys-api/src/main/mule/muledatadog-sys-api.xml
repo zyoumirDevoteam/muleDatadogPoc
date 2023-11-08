@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <flow name="muledatadog-sys-api-main">
+        <http:listener config-ref="muledatadog-sys-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="muledatadog-sys-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="muledatadog-sys-api-console">
+        <http:listener config-ref="muledatadog-sys-api-httpListenerConfig" path="/">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="muledatadog-sys-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\getProductsSystem:muledatadog-sys-api-config">
+		<set-variable value='#[output application/json&#10;---&#10;{&#10;	"traceId" : attributes.queryParams.traceId,&#10;	"parentId":  attributes.queryParams.parentId,&#10;	"timer":  attributes.queryParams.timer&#10;}]' doc:name="Set Variable" doc:id="2fd7649e-834b-4f4f-a2df-9ee82ad850df" variableName="traceBuffer" />
+		<http:request method="GET" doc:name="Request" doc:id="acb2d56c-7238-48b3-a9e0-b0e22f92d133" url='#["https://fakestoreapi.com/products"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="054013ef-16a7-444b-bde3-b62beaa9f7f8">
+			<ee:message>
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+import * from dw::Runtime
+---
+payload wait 2000]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="spanSys" ><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Periods
+import * from dw::util::Timer
+var inputString = flow.name splitBy ":"
+var strin= inputString[1]
+---
+[
+    {
+      "duration": ((currentMilliseconds() - vars.traceBuffer.timer) as Number {unit: "milliseconds"})*1000000,
+      "name": "sys.getProducts",
+      "resource": "/getProducts",
+      "service": strin[1 to (sizeOf(strin)-1)],
+      "parent_id": vars.traceBuffer.parentId,
+      "span_id":(random() * 1000000000) as Number as String {format:"0"},
+      "start": 0,
+      "trace_id": vars.traceBuffer.traceId,
+      "type": "web"
+    }
+ ]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-payload value='#[{"payld":payload,"span":vars.spanSys}]' doc:name="Set Payload" doc:id="14ccef63-5af3-4f33-8622-3d48b2e3912a" />
+		<logger level="TRACE" doc:name="Logger" doc:id="2926d053-f770-457f-97ce-d4bf75c94974" message='#["Products retrieved"]'/>
+    </flow>
+	<flow name="get:\getProductsSystem\(Id):muledatadog-sys-api-config">
+		<http:request method="GET" doc:name="Request" doc:id="dfe30439-3cd2-4be9-b753-ed828be976d6" url='#["https://fakestoreapi.com/products/"++ attributes.uriParams.Id]' />
+		<logger level="TRACE" doc:name="Logger1" doc:id="20544a92-baf1-40d2-b8d8-16efea1661a0" message='#["Product N°"++ attributes.uriParams.Id ++" retrieved"]' />
+    </flow>
+    <flow name="post:\postOrdersSystem:application\json:muledatadog-sys-api-config">
+		<http:request method="POST" doc:name="Request" doc:id="b5f2c95e-fd77-4b0c-a20c-ef795fc5c97a" url='#["https://fakestoreapi.com/products"]' />
+		<ee:transform doc:name="Transform Message" doc:id="2cc0c2c6-7e70-4c24-8f3d-057f755f54b4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+import * from dw::Runtime
+---
+if(isEmpty(payload) or payload == null or payload == "") "item not found" else payload wait 2000]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="TRACE" doc:name="Logger" doc:id="05108ecf-4dad-40f1-b758-025eee2b79f2" message='#["Product Created"]' />
+    </flow>
+</mule>
